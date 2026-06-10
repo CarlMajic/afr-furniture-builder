@@ -200,7 +200,7 @@ def compute_chair_placements(table_half_w, table_half_d, chair_front, gap_m, cou
             placements.append({
                 'x':     r * math.cos(angle),
                 'y':     r * math.sin(angle),
-                'rot_z': angle + math.pi / 2,   # +Y faces toward origin
+                'rot_z': angle - math.pi / 2,   # chair +Y faces toward origin
                 'type':  'radial',
                 'angle': angle,
                 'dir_x': math.cos(angle),
@@ -213,15 +213,15 @@ def compute_chair_placements(table_half_w, table_half_d, chair_front, gap_m, cou
 
         if count == 2:
             raw = [
-                (0,       -front_y,  0.0,            0,  -1),  # front: faces +Y
-                (0,       +front_y,  math.pi,         0,  +1),  # back:  faces -Y
+                (0,       -front_y,  math.pi,         0,  -1),  # front
+                (0,       +front_y,  0.0,              0,  +1),  # back
             ]
         else:
             raw = [
-                (0,       -front_y,  0.0,             0,  -1),  # front
-                (0,       +front_y,  math.pi,          0,  +1),  # back
-                (-side_x,  0,       -math.pi / 2,     -1,   0),  # left:  faces +X
-                (+side_x,  0,        math.pi / 2,     +1,   0),  # right: faces -X
+                (0,       -front_y,  math.pi,          0,  -1),  # front
+                (0,       +front_y,  0.0,               0,  +1),  # back
+                (-side_x,  0,        math.pi / 2,      -1,   0),  # left
+                (+side_x,  0,       -math.pi / 2,      +1,   0),  # right
             ]
 
         for x, y, rot_z, dx, dy in raw:
