@@ -1,6 +1,8 @@
 from .build_set import CAFE_OT_BuildSet
+from .build_bar_set import BAR_OT_BuildSet
+from .build_lounge_set import LOUNGE_OT_BuildSet
 
-classes = [CAFE_OT_BuildSet]
+classes = [CAFE_OT_BuildSet, BAR_OT_BuildSet, LOUNGE_OT_BuildSet]
 
 
 def register():

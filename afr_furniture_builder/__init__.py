@@ -1,10 +1,10 @@
 bl_info = {
-    "name":        "AFR Cafe Builder",
+    "name":        "AFR Furniture Builder",
     "author":      "Majic Production Services",
-    "version":     (0, 1, 0),
+    "version":     (0, 2, 0),
     "blender":     (3, 6, 0),
-    "location":    "View3D > Sidebar > AFR Cafe",
-    "description": "Place AFR cafe table + chair sets from the furniture library",
+    "location":    "View3D > Sidebar > AFR Furniture",
+    "description": "Place AFR furniture sets from the library catalogue",
     "category":    "Object",
 }
 

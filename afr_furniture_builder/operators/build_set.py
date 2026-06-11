@@ -15,14 +15,15 @@ _TABLE_LABELS = {v[0]: v[1] for v in TABLE_ITEMS}
 _CHAIR_LABELS = {v[0]: v[1] for v in CHAIR_ITEMS}
 
 
-def _tag_chair(chair_root, placement, table_half_w, table_half_d, chair_front):
-    chair_root["afr_type"]         = placement['type']
-    chair_root["afr_angle"]        = placement['angle']
-    chair_root["afr_dir_x"]        = placement['dir_x']
-    chair_root["afr_dir_y"]        = placement['dir_y']
-    chair_root["afr_table_half_w"] = table_half_w
-    chair_root["afr_table_half_d"] = table_half_d
-    chair_root["afr_chair_front"]  = chair_front   # seat-front offset from origin
+def _tag_chair(chair_root, placement, table_half_w, table_half_d, chair_inward):
+    chair_root["afr_type"]          = placement['type']
+    chair_root["afr_angle"]         = placement['angle']
+    chair_root["afr_dir_x"]         = placement['dir_x']
+    chair_root["afr_dir_y"]         = placement['dir_y']
+    chair_root["afr_x_offset"]      = placement['x_offset']
+    chair_root["afr_table_half_w"]  = table_half_w
+    chair_root["afr_table_half_d"]  = table_half_d
+    chair_root["afr_chair_inward"]  = chair_inward
 
 
 def _place_chair(chair_root, set_root, placement):
@@ -55,7 +56,7 @@ class CAFE_OT_BuildSet(bpy.types.Operator):
         table_half_w = (max_x - min_x) / 2
         table_half_d = (max_y - min_y) / 2
 
-        # --- Append first chair; use mesh_max_y as the seat-front offset ---
+        # --- Append first chair; use mesh_min_y as inward-face offset ---
         try:
             first_chair = append_named_object(lib, COLLECTION_CHAIRS, s.chair_name)
         except Exception as exc:
@@ -63,12 +64,12 @@ class CAFE_OT_BuildSet(bpy.types.Operator):
             self.report({'ERROR'}, f"Chair: {exc}")
             return {'CANCELLED'}
 
-        _, _, _, c_max_y = get_obj_bounds_xy(first_chair)
-        chair_front = c_max_y   # bounding-box max-Y = seat front from origin
+        _, _, c_min_y, _ = get_obj_bounds_xy(first_chair)
+        chair_inward = c_min_y  # bounding-box min-Y = inward face after rot_z = angle-π/2
 
         # --- Compute positions ---
         placements = compute_chair_placements(
-            table_half_w, table_half_d, chair_front, gap_m, count, s.arrangement
+            table_half_w, table_half_d, chair_inward, gap_m, count, s.arrangement
         )
 
         # --- Create set root empty ---
@@ -89,13 +90,13 @@ class CAFE_OT_BuildSet(bpy.types.Operator):
         table_root.location = Vector((0, 0, 0))
 
         # --- Place first chair ---
-        _tag_chair(first_chair, placements[0], table_half_w, table_half_d, chair_front)
+        _tag_chair(first_chair, placements[0], table_half_w, table_half_d, chair_inward)
         _place_chair(first_chair, set_root, placements[0])
 
         # --- Duplicate and place remaining chairs ---
         for i in range(1, count):
             chair_copy = duplicate_hierarchy(first_chair)
-            _tag_chair(chair_copy, placements[i], table_half_w, table_half_d, chair_front)
+            _tag_chair(chair_copy, placements[i], table_half_w, table_half_d, chair_inward)
             _place_chair(chair_copy, set_root, placements[i])
 
         context.view_layer.update()

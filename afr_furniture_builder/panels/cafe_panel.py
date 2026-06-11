@@ -62,7 +62,7 @@ class CafeSettings(bpy.types.PropertyGroup):
         name="Gap",
         description="Space between chair front and table edge (drag to adjust selected set live)",
         default=0.10,
-        min=0.0,
+        min=-0.50,
         max=0.80,
         step=1,
         precision=3,
@@ -78,23 +78,23 @@ class CafeSettings(bpy.types.PropertyGroup):
 class CAFE_OT_Reload(bpy.types.Operator):
     bl_idname      = "cafe.reload_addon"
     bl_label       = "Reload Addon"
-    bl_description = "Hot-reload AFR Cafe Builder without restarting Blender"
+    bl_description = "Hot-reload AFR Furniture Builder without restarting Blender"
 
     def execute(self, context):
-        mods = [k for k in sys.modules if k == "afr_cafe_builder" or k.startswith("afr_cafe_builder.")]
+        mods = [k for k in sys.modules if k == "afr_furniture_builder" or k.startswith("afr_furniture_builder.")]
         for mod in mods:
             del sys.modules[mod]
-        bpy.ops.preferences.addon_disable(module="afr_cafe_builder")
-        bpy.ops.preferences.addon_enable(module="afr_cafe_builder")
+        bpy.ops.preferences.addon_disable(module="afr_furniture_builder")
+        bpy.ops.preferences.addon_enable(module="afr_furniture_builder")
         return {'FINISHED'}
 
 
 class CAFE_PT_Main(bpy.types.Panel):
-    bl_label       = "AFR Cafe Builder"
+    bl_label       = "Cafe Sets"
     bl_idname      = "CAFE_PT_main"
     bl_space_type  = "VIEW_3D"
     bl_region_type = "UI"
-    bl_category    = "AFR Cafe"
+    bl_category    = "AFR Furniture"
 
     def draw(self, context):
         layout = self.layout

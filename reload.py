@@ -2,7 +2,7 @@
 import bpy
 import sys
 
-addon = "afr_cafe_builder"
+addon = "afr_furniture_builder"
 
 mods = [k for k in sys.modules if k == addon or k.startswith(addon + ".")]
 for m in mods:
