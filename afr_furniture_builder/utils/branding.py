@@ -1,9 +1,9 @@
 """
 AFR Furniture Builder — branding utilities.
 
-Downloads the AFR logo from their CDN on first use and caches it alongside
-the addon.  Falls back to a programmatic badge icon if the download fails.
-Call load_icons() on register and unload_icons() on unregister.
+Loads the AFR logo PNG (cached alongside the addon) and registers it as a
+Blender preview icon.  Falls back to a programmatic blue/gold badge if the
+file is missing.  Attempts a CDN download on first run if neither exists.
 """
 
 import bpy
@@ -12,18 +12,16 @@ import os
 import re
 import urllib.request
 
-# ── Brand colours (sRGB floats, used for programmatic icons) ───────────────
-BLUE  = (0.271, 0.455, 0.729, 1.0)   # #4574BA — header blue
-GOLD  = (0.784, 0.659, 0.251, 1.0)   # #C8A840 — accent gold
+# ── Brand colours (sRGB floats) ────────────────────────────────────────────
+BLUE  = (0.271, 0.455, 0.729, 1.0)   # #4574BA
+GOLD  = (0.784, 0.659, 0.251, 1.0)   # #C8A840
 WHITE = (1.0,   1.0,   1.0,   1.0)
 
-# ── Logo candidate URLs (tried in order) ──────────────────────────────────
+# ── Logo candidate URLs (tried in order if no cached file exists) ──────────
 _LOGO_CANDIDATES = [
     "https://www.afrevents.com/wp-content/themes/afrevents/images/afr-events-logo.png",
     "https://www.afrevents.com/wp-content/themes/afr/images/afr-events-logo.png",
-    "https://www.afrevents.com/wp-content/themes/afrevents/img/logo.png",
     "https://www.afrevents.com/images/afr-logo.png",
-    "https://www.afrevents.com/img/afr-logo.png",
     "https://www.rentfurniture.com/wp-content/themes/afr/images/logo.png",
 ]
 
@@ -52,24 +50,20 @@ def _valid_image(data):
 
 
 def _fetch_logo():
-    """Try to download the AFR logo; return local path or None."""
+    """Return path to a cached logo file, downloading it if necessary."""
     path = _cache_path()
     if os.path.exists(path) and os.path.getsize(path) > 2000:
         return path
 
     candidates = list(_LOGO_CANDIDATES)
-
-    # Try to find the real logo URL by scraping the homepage
     try:
         req = urllib.request.Request("https://www.afrevents.com/", headers=_HEADERS)
         with urllib.request.urlopen(req, timeout=3) as resp:
             html = resp.read().decode("utf-8", errors="replace")
-        patterns = [
+        for pat in [
             r'<img[^>]+class=["\'][^"\']*logo[^"\']*["\'][^>]+src=["\']([^"\']+)["\']',
             r'<img[^>]+src=["\']([^"\']+)["\'][^>]+class=["\'][^"\']*logo[^"\']*["\']',
-            r'<img[^>]+alt=["\'][^"\']*logo[^"\']*["\'][^>]+src=["\']([^"\']+)["\']',
-        ]
-        for pat in patterns:
+        ]:
             m = re.search(pat, html, re.I)
             if m:
                 url = m.group(1)
@@ -95,10 +89,26 @@ def _fetch_logo():
     return None
 
 
-# ── Programmatic icon generators ───────────────────────────────────────────
+# ── Icon pixel helpers ─────────────────────────────────────────────────────
+
+def _remove_white_bg(thumb, threshold=0.90):
+    """Set near-white pixels to transparent in a loaded preview thumbnail."""
+    try:
+        w, h = thumb.image_size
+        if w == 0 or h == 0:
+            return
+        pixels = list(thumb.image_pixels_float)
+        for i in range(0, len(pixels), 4):
+            r, g, b = pixels[i], pixels[i + 1], pixels[i + 2]
+            if r > threshold and g > threshold and b > threshold:
+                pixels[i + 3] = 0.0
+        thumb.image_pixels_float = pixels
+    except Exception as e:
+        print(f"[AFR Branding] bg-removal error: {e}")
+
 
 def _badge(size=32):
-    """Blue circle with a gold border ring — fallback logo icon."""
+    """Blue circle with a gold border — fallback when no logo file exists."""
     pixels = []
     cx = cy = size / 2.0
     r_outer = size / 2.0 - 0.5
@@ -109,11 +119,11 @@ def _badge(size=32):
             dy = row - cy + 0.5
             d  = math.sqrt(dx * dx + dy * dy)
             if d > r_outer:
-                pixels += [0.0, 0.0, 0.0, 0.0]  # transparent
+                pixels += [0.0, 0.0, 0.0, 0.0]
             elif d > r_gold:
-                pixels += list(GOLD)             # gold ring
+                pixels += list(GOLD)
             else:
-                pixels += list(BLUE)             # blue fill
+                pixels += list(BLUE)
     return pixels
 
 
@@ -130,13 +140,17 @@ def load_icons():
     _pcoll = bpy.utils.previews.new()
 
     logo_path = _fetch_logo()
+    loaded_real = False
+
     if logo_path:
         try:
-            _pcoll.load("afr_logo", logo_path, "IMAGE")
-        except Exception:
-            logo_path = None
+            thumb = _pcoll.load("afr_logo", logo_path, "IMAGE")
+            _remove_white_bg(thumb)
+            loaded_real = True
+        except Exception as e:
+            print(f"[AFR Branding] logo load error: {e}")
 
-    if not logo_path:
+    if not loaded_real:
         t = _pcoll.new("afr_logo")
         t.image_size = (32, 32)
         t.image_pixels_float = _badge(32)
@@ -150,8 +164,22 @@ def unload_icons():
 
 
 def icon(name="afr_logo"):
-    """Return the icon_value for a branding icon, or 0 if unavailable."""
+    """Return icon_value for a branding icon, 0 if unavailable."""
     if _pcoll is None:
         return 0
     thumb = _pcoll.get(name)
     return thumb.icon_id if thumb else 0
+
+
+def draw_logo(layout, scale=5.0):
+    """
+    Draw the AFR logo prominently at the top of a panel.
+    Falls back to a text label if the icon isn't loaded.
+    """
+    logo = icon()
+    row = layout.row()
+    row.alignment = 'CENTER'
+    if logo:
+        row.template_icon(icon_value=logo, scale=scale)
+    else:
+        row.label(text="AFR Furniture Builder")

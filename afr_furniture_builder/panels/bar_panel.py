@@ -82,6 +82,9 @@ class BAR_PT_Main(bpy.types.Panel):
         layout = self.layout
         s = context.scene.bar_settings
 
+        branding.draw_logo(layout)
+        layout.separator(factor=0.5)
+
         # ── Library ───────────────────────────────────────────
         lib_box = layout.box()
         lib_box.label(text="Library", icon='FILE_FOLDER')

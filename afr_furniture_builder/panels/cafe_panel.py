@@ -82,6 +82,9 @@ class CAFE_PT_Main(bpy.types.Panel):
         layout = self.layout
         s = context.scene.cafe_settings
 
+        branding.draw_logo(layout)
+        layout.separator(factor=0.5)
+
         # ── Library ───────────────────────────────────────────
         lib_box = layout.box()
         row = lib_box.row()
