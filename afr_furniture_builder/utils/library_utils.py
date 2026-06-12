@@ -69,6 +69,23 @@ def get_obj_bounds_xy(obj):
     )
 
 
+def get_obj_max_z(obj):
+    """World-space maximum Z of an object and its mesh children."""
+    meshes = [obj] if obj.type == 'MESH' else []
+    for child in obj.children_recursive:
+        if child.type == 'MESH':
+            meshes.append(child)
+    if not meshes:
+        return 0.0
+    max_z = -1e9
+    for m in meshes:
+        for corner in m.bound_box:
+            z = (m.matrix_world @ Vector(corner)).z
+            if z > max_z:
+                max_z = z
+    return max_z
+
+
 # ---------------------------------------------------------------------------
 # Library append
 # ---------------------------------------------------------------------------

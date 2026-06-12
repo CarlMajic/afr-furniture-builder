@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import StringProperty, EnumProperty, FloatProperty
+from bpy.props import StringProperty, EnumProperty, FloatProperty, BoolProperty
 from ..utils.library_utils import (
     DINING_LIBRARY_PATH,
     DINING_TABLE_ITEMS,
@@ -65,6 +65,27 @@ class DiningSettings(bpy.types.PropertyGroup):
         unit='LENGTH',
         update=_gap_updated,
     )
+    use_tablecloth: BoolProperty(
+        name="Tablecloth",
+        description="Add a cloth-simulated tablecloth to the set",
+        default=False,
+    )
+    tablecloth_shape: EnumProperty(
+        name="Cloth Shape",
+        items=[
+            ('RECT',  'Rectangular', 'Rectangular tablecloth'),
+            ('ROUND', 'Round',       'Round tablecloth — best for round tables'),
+        ],
+        default='RECT',
+    )
+    tablecloth_overhang: FloatProperty(
+        name="Overhang",
+        description="How far the cloth drapes past each table edge",
+        default=0.30,
+        min=0.05, max=1.00,
+        step=1, precision=3,
+        unit='LENGTH',
+    )
     active_set_name: StringProperty(name="Active Set", default="")
 
 
@@ -107,6 +128,24 @@ class DINING_PT_Main(bpy.types.Panel):
         row.prop(s, "chair_count", expand=True)
         row = cfg_box.row(align=True)
         row.prop(s, "arrangement", expand=True)
+
+        layout.separator(factor=0.8)
+
+        # ── Tablecloth ────────────────────────────────────────
+        cloth_box = layout.box()
+        row = cloth_box.row(align=True)
+        row.prop(
+            s, "use_tablecloth", text="",
+            icon='CHECKBOX_HLT' if s.use_tablecloth else 'CHECKBOX_DEHLT',
+            emboss=False,
+        )
+        row.label(text="Tablecloth", icon='MOD_CLOTH')
+        if s.use_tablecloth:
+            sub = cloth_box.column(align=True)
+            sub.row(align=True).prop(s, "tablecloth_shape", expand=True)
+            sub.prop(s, "tablecloth_overhang", slider=True)
+            sub.separator(factor=0.4)
+            sub.label(text="Press Space in Timeline to run sim", icon='INFO')
 
         layout.separator(factor=0.8)
 

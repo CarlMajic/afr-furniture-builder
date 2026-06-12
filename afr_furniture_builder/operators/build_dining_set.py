@@ -1,4 +1,5 @@
 import bpy
+import bmesh
 from mathutils import Vector
 from ..utils.library_utils import (
     DINING_COLLECTION_CHAIRS,
@@ -8,6 +9,7 @@ from ..utils.library_utils import (
     append_named_object,
     duplicate_hierarchy,
     get_obj_bounds_xy,
+    get_obj_max_z,
     compute_dining_chair_placements,
 )
 
@@ -35,6 +37,73 @@ def _place_chair(chair_root, set_root, placement):
     chair_root.rotation_euler.z = placement['rot_z']
 
 
+def _add_tablecloth(context, set_root, table_root, cx, cy, half_w, half_d, settings):
+    overhang = settings.tablecloth_overhang
+    shape    = settings.tablecloth_shape
+
+    # Cloth half-extents include the overhang drape
+    cloth_hw = half_w + overhang
+    cloth_hd = half_d + overhang
+
+    # Round cloth is always a perfect circle using the larger dimension
+    if shape == 'ROUND':
+        cloth_hw = cloth_hd = max(cloth_hw, cloth_hd)
+
+    table_top = get_obj_max_z(table_root)
+    cloth_z   = table_top + 0.30   # ~1 ft above table surface — cloth falls onto table
+
+    # Build mesh with bmesh (50 segments = 2500 faces, good drape resolution)
+    seg  = 50
+    mesh = bpy.data.meshes.new("Tablecloth")
+    bm   = bmesh.new()
+    bmesh.ops.create_grid(bm, x_segments=seg, y_segments=seg, size=1.0)
+
+    # Scale verts to final cloth dimensions
+    for v in bm.verts:
+        v.co.x *= cloth_hw
+        v.co.y *= cloth_hd
+
+    # For round cloth, delete vertices outside the circle
+    if shape == 'ROUND':
+        r2 = cloth_hw * cloth_hw
+        outside = [v for v in bm.verts if v.co.x ** 2 + v.co.y ** 2 > r2]
+        bmesh.ops.delete(bm, geom=outside, context='VERTS')
+
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+
+    cloth_obj = bpy.data.objects.new("Tablecloth", mesh)
+    context.scene.collection.objects.link(cloth_obj)
+
+    # Parent to set root so it moves with the set
+    cloth_obj.parent = set_root
+    cloth_obj.matrix_parent_inverse = set_root.matrix_world.inverted()
+    cloth_obj.location = Vector((cx, cy, cloth_z))
+
+    # Cloth modifier — cotton-weight preset
+    cloth_mod = cloth_obj.modifiers.new("Cloth", 'CLOTH')
+    cs = cloth_mod.settings
+    cs.quality               = 10
+    cs.mass                  = 0.3
+    cs.tension_stiffness     = 15.0
+    cs.compression_stiffness = 15.0
+    cs.shear_stiffness       = 5.0
+    cs.bending_stiffness     = 0.5
+
+    col = cloth_mod.collision_settings
+    col.use_collision  = True
+    col.distance_min   = 0.005
+
+    # Collision modifier on every table mesh so the cloth lands on it
+    for obj in [table_root] + list(table_root.children_recursive):
+        if obj.type == 'MESH':
+            if not any(m.type == 'COLLISION' for m in obj.modifiers):
+                obj.modifiers.new("Collision", 'COLLISION')
+
+    return cloth_obj
+
+
 class DINING_OT_BuildSet(bpy.types.Operator):
     bl_idname      = "dining.build_set"
     bl_label       = "Build Dining Set"
@@ -54,8 +123,8 @@ class DINING_OT_BuildSet(bpy.types.Operator):
             return {'CANCELLED'}
 
         min_x, max_x, min_y, max_y = get_obj_bounds_xy(table_root)
-        table_half_w  = (max_x - min_x) / 2
-        table_half_d  = (max_y - min_y) / 2
+        table_half_w   = (max_x - min_x) / 2
+        table_half_d   = (max_y - min_y) / 2
         table_center_x = (min_x + max_x) / 2
         table_center_y = (min_y + max_y) / 2
 
@@ -101,6 +170,17 @@ class DINING_OT_BuildSet(bpy.types.Operator):
             chair_copy = duplicate_hierarchy(first_chair)
             _tag_chair(chair_copy, placements[i], table_half_w, table_half_d, chair_inward)
             _place_chair(chair_copy, set_root, placements[i])
+
+        # Update matrices so get_obj_max_z reads correct world positions
+        context.view_layer.update()
+
+        if s.use_tablecloth:
+            _add_tablecloth(
+                context, set_root, table_root,
+                table_center_x, table_center_y,
+                table_half_w, table_half_d,
+                s,
+            )
 
         context.view_layer.update()
 
