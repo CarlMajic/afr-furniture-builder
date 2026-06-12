@@ -16,14 +16,16 @@ _CHAIR_LABELS = {v[0]: v[1] for v in DINING_CHAIR_ITEMS}
 
 
 def _tag_chair(chair_root, placement, table_half_w, table_half_d, chair_inward):
-    chair_root["afr_type"]          = placement['type']
-    chair_root["afr_angle"]         = placement['angle']
-    chair_root["afr_dir_x"]         = placement['dir_x']
-    chair_root["afr_dir_y"]         = placement['dir_y']
-    chair_root["afr_x_offset"]      = placement['x_offset']
-    chair_root["afr_table_half_w"]  = table_half_w
-    chair_root["afr_table_half_d"]  = table_half_d
-    chair_root["afr_chair_inward"]  = chair_inward
+    chair_root["afr_type"]           = placement['type']
+    chair_root["afr_angle"]          = placement['angle']
+    chair_root["afr_dir_x"]          = placement['dir_x']
+    chair_root["afr_dir_y"]          = placement['dir_y']
+    chair_root["afr_x_offset"]       = placement['x_offset']
+    chair_root["afr_table_half_w"]   = table_half_w
+    chair_root["afr_table_half_d"]   = table_half_d
+    chair_root["afr_chair_inward"]   = chair_inward
+    chair_root["afr_table_center_x"] = placement.get('center_x', 0.0)
+    chair_root["afr_table_center_y"] = placement.get('center_y', 0.0)
 
 
 def _place_chair(chair_root, set_root, placement):
@@ -52,8 +54,10 @@ class DINING_OT_BuildSet(bpy.types.Operator):
             return {'CANCELLED'}
 
         min_x, max_x, min_y, max_y = get_obj_bounds_xy(table_root)
-        table_half_w = (max_x - min_x) / 2
-        table_half_d = (max_y - min_y) / 2
+        table_half_w  = (max_x - min_x) / 2
+        table_half_d  = (max_y - min_y) / 2
+        table_center_x = (min_x + max_x) / 2
+        table_center_y = (min_y + max_y) / 2
 
         try:
             first_chair = append_named_object(lib, DINING_COLLECTION_CHAIRS, s.chair_name)
@@ -68,6 +72,12 @@ class DINING_OT_BuildSet(bpy.types.Operator):
         placements = compute_dining_chair_placements(
             table_half_w, table_half_d, chair_inward, gap_m, count, s.arrangement
         )
+        for p in placements:
+            p['x']        += table_center_x
+            p['y']        += table_center_y
+            p['x_offset'] += table_center_x
+            p['center_x']  = table_center_x
+            p['center_y']  = table_center_y
 
         set_name = (
             f"{_TABLE_LABELS.get(s.table_name, s.table_name)}"

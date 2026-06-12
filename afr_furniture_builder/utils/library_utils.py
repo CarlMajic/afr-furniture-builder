@@ -640,9 +640,10 @@ def reposition_chairs(set_root, gap_m):
         elif ptype == 'rect':
             dir_y    = child.get("afr_dir_y", -1.0)
             x_offset = child.get("afr_x_offset", 0.0)
+            center_y = child.get("afr_table_center_y", 0.0)
             r = half_d + gap_m - chair_inward
-            child.location.x = x_offset   # fixed; only Y changes with gap
-            child.location.y = dir_y * r
+            child.location.x = x_offset
+            child.location.y = dir_y * r + center_y
 
 
 # ---------------------------------------------------------------------------
