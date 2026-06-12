@@ -1,5 +1,4 @@
 import bpy
-import sys
 from bpy.props import StringProperty, EnumProperty, FloatProperty
 from ..utils.library_utils import (
     BAR_LIBRARY_PATH,
@@ -8,17 +7,16 @@ from ..utils.library_utils import (
     find_bar_set_root,
     reposition_chairs,
 )
+from ..utils import branding
 
 
 def _gap_updated(self, context):
     active = context.active_object
-    root = find_bar_set_root(active) if active else None
-
+    root   = find_bar_set_root(active) if active else None
     if root is None:
         stored = self.active_set_name
         if stored and stored in bpy.data.objects:
             root = bpy.data.objects[stored]
-
     if root and root.get("afr_is_bar_set"):
         reposition_chairs(root, self.live_gap)
 
@@ -52,74 +50,88 @@ class BarSettings(bpy.types.PropertyGroup):
         name="Arrangement",
         items=[
             ('RADIAL', 'Radial', 'Stools evenly spaced around the table radius'),
-            ('RECT',   'Rect',   'Stools aligned to table edges (front/back/sides)'),
+            ('RECT',   'Rect',   'Stools aligned to table edges (front/back)'),
         ],
         default='RADIAL',
     )
     live_gap: FloatProperty(
         name="Gap",
-        description="Space between stool front and table edge (drag to adjust selected set live)",
+        description="Distance between stool front and table edge",
         default=0.10,
-        min=-0.50,
-        max=0.80,
-        step=1,
-        precision=3,
+        min=-0.50, max=0.80,
+        step=1, precision=3,
         unit='LENGTH',
         update=_gap_updated,
     )
-    active_set_name: StringProperty(
-        name="Active Set",
-        default="",
-    )
+    active_set_name: StringProperty(name="Active Set", default="")
 
 
 class BAR_PT_Main(bpy.types.Panel):
-    bl_label       = "High Seating Sets"
+    bl_label       = "High Seating"
     bl_idname      = "BAR_PT_main"
     bl_space_type  = "VIEW_3D"
     bl_region_type = "UI"
     bl_category    = "AFR Furniture"
 
+    def draw_header(self, context):
+        logo = branding.icon()
+        if logo:
+            self.layout.label(text="", icon_value=logo)
+
     def draw(self, context):
         layout = self.layout
         s = context.scene.bar_settings
 
-        box = layout.box()
-        box.prop(s, "library_path", text="")
+        # ── Library ───────────────────────────────────────────
+        lib_box = layout.box()
+        lib_box.label(text="Library", icon='FILE_FOLDER')
+        lib_box.prop(s, "library_path", text="")
 
-        layout.separator()
+        layout.separator(factor=0.8)
 
-        layout.prop(s, "table_name", text="Table")
-        layout.prop(s, "stool_name", text="Stool")
+        # ── Products ──────────────────────────────────────────
+        prod_box = layout.box()
+        prod_box.label(text="Products", icon='OBJECT_DATA')
+        prod_box.prop(s, "table_name", text="Table")
+        prod_box.prop(s, "stool_name", text="Stool")
 
-        layout.separator()
+        layout.separator(factor=0.8)
 
-        row = layout.row(align=True)
+        # ── Layout ────────────────────────────────────────────
+        cfg_box = layout.box()
+        cfg_box.label(text="Layout", icon='GRID')
+        row = cfg_box.row(align=True)
         row.prop(s, "stool_count", expand=True)
-        layout.prop(s, "arrangement", expand=True)
+        row = cfg_box.row(align=True)
+        row.prop(s, "arrangement", expand=True)
 
-        layout.separator()
+        layout.separator(factor=0.8)
 
+        # ── Active set & gap ──────────────────────────────────
         active = context.active_object
-        root = find_bar_set_root(active) if active else None
-
-        gap_box = layout.box()
-        col = gap_box.column()
+        root   = find_bar_set_root(active) if active else None
+        set_box = layout.box()
+        col = set_box.column(align=True)
+        col.label(text="Active Set", icon='ARMATURE_DATA')
 
         if root and root.get("afr_is_bar_set"):
-            col.label(text=f"Set: {root.name}", icon='OBJECT_DATA')
+            col.label(text=root.name, icon='CHECKMARK')
         else:
             stored = s.active_set_name
             if stored and stored in bpy.data.objects:
-                col.label(text=f"Last: {stored}", icon='OBJECT_DATA')
+                col.label(text=stored, icon='OBJECT_DATA')
             else:
                 col.label(text="No set selected", icon='INFO')
 
+        col.separator(factor=0.5)
         col.prop(s, "live_gap", slider=True)
 
-        layout.separator()
+        layout.separator(factor=1.2)
 
-        layout.operator("bar.build_set", text="Build Set", icon='MESH_PLANE')
+        # ── Build ─────────────────────────────────────────────
+        row = layout.row()
+        row.scale_y = 1.6
+        row.operator("bar.build_set", text="Build High Seating Set", icon='MESH_PLANE')
 
 
 classes = [BarSettings, BAR_PT_Main]

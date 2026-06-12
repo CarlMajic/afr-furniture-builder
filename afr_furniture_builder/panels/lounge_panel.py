@@ -11,6 +11,7 @@ from ..utils.library_utils import (
     find_lounge_set_root,
     reposition_lounge_set,
 )
+from ..utils import branding
 
 
 def _update_sofa_gap(self, context):
@@ -33,7 +34,7 @@ def _update_chair_spread(self, context):
 
 def _active_lounge_root(self, context):
     active = context.active_object
-    root = find_lounge_set_root(active) if active else None
+    root   = find_lounge_set_root(active) if active else None
     if root is None:
         stored = self.active_set_name
         if stored and stored in bpy.data.objects:
@@ -85,7 +86,7 @@ class LoungeSettings(bpy.types.PropertyGroup):
     )
     sofa_gap: FloatProperty(
         name="Sofa Gap",
-        description="Y shift from library position (0 = as designed, positive = further from table)",
+        description="Y shift from library position (0 = as designed)",
         default=0.0,
         min=-1.50, max=1.50,
         step=1, precision=3,
@@ -94,7 +95,7 @@ class LoungeSettings(bpy.types.PropertyGroup):
     )
     chair_gap: FloatProperty(
         name="Chair Gap",
-        description="Y shift from library position (0 = as designed, positive = further from table)",
+        description="Y shift from library position (0 = as designed)",
         default=0.0,
         min=-1.50, max=1.50,
         step=1, precision=3,
@@ -120,67 +121,85 @@ class LOUNGE_PT_Main(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category    = "AFR Furniture"
 
+    def draw_header(self, context):
+        logo = branding.icon()
+        if logo:
+            self.layout.label(text="", icon_value=logo)
+
     def draw(self, context):
         layout = self.layout
         s = context.scene.lounge_settings
 
-        box = layout.box()
-        box.prop(s, "library_path", text="")
+        # ── Library ───────────────────────────────────────────
+        lib_box = layout.box()
+        lib_box.label(text="Library", icon='FILE_FOLDER')
+        lib_box.prop(s, "library_path", text="")
 
-        layout.separator()
+        layout.separator(factor=0.8)
 
-        layout.prop(s, "cocktail_table_name", text="Coffee Table")
-        layout.prop(s, "sofa_name",           text="Sofa")
-        layout.prop(s, "chair_name",          text="Chair")
+        # ── Products ──────────────────────────────────────────
+        prod_box = layout.box()
+        prod_box.label(text="Products", icon='OBJECT_DATA')
+        prod_box.prop(s, "cocktail_table_name", text="Coffee Table")
+        prod_box.prop(s, "sofa_name",           text="Sofa")
+        prod_box.prop(s, "chair_name",          text="Chair")
 
-        layout.separator()
+        layout.separator(factor=0.8)
 
-        # Optional pieces
-        opt = layout.box()
-        opt.label(text="Optional Pieces")
+        # ── Optional pieces ───────────────────────────────────
+        opt_box = layout.box()
+        opt_box.label(text="Optional Pieces", icon='ADD')
 
-        row = opt.row()
-        row.prop(s, "use_end_table")
+        row = opt_box.row(align=True)
+        row.prop(s, "use_end_table", text="", icon='CHECKBOX_HLT' if s.use_end_table else 'CHECKBOX_DEHLT', emboss=False)
+        row.label(text="End Table")
         sub = row.row()
         sub.enabled = s.use_end_table
         sub.prop(s, "end_table_name", text="")
 
-        row = opt.row()
-        row.prop(s, "use_accent")
+        row = opt_box.row(align=True)
+        row.prop(s, "use_accent", text="", icon='CHECKBOX_HLT' if s.use_accent else 'CHECKBOX_DEHLT', emboss=False)
+        row.label(text="Accent")
         sub = row.row()
         sub.enabled = s.use_accent
         sub.prop(s, "accent_name", text="")
 
-        row = opt.row()
-        row.prop(s, "use_lamp")
+        row = opt_box.row(align=True)
+        row.prop(s, "use_lamp", text="", icon='CHECKBOX_HLT' if s.use_lamp else 'CHECKBOX_DEHLT', emboss=False)
+        row.label(text="Lamp")
         sub = row.row()
         sub.enabled = s.use_lamp
         sub.prop(s, "lamp_name", text="")
 
-        layout.separator()
+        layout.separator(factor=0.8)
 
-        # Live sliders
+        # ── Active set & spacing ──────────────────────────────
         active = context.active_object
-        root = find_lounge_set_root(active) if active else None
-        gap_box = layout.box()
-        col = gap_box.column()
+        root   = find_lounge_set_root(active) if active else None
+        set_box = layout.box()
+        col = set_box.column(align=True)
+        col.label(text="Active Set", icon='ARMATURE_DATA')
 
         if root and root.get("afr_is_lounge_set"):
-            col.label(text=f"Set: {root.name}", icon='OBJECT_DATA')
+            col.label(text=root.name, icon='CHECKMARK')
         else:
             stored = s.active_set_name
             if stored and stored in bpy.data.objects:
-                col.label(text=f"Last: {stored}", icon='OBJECT_DATA')
+                col.label(text=stored, icon='OBJECT_DATA')
             else:
                 col.label(text="No set selected", icon='INFO')
 
+        col.separator(factor=0.5)
         col.prop(s, "sofa_gap",     slider=True)
         col.prop(s, "chair_gap",    slider=True)
         col.prop(s, "chair_spread", slider=True)
 
-        layout.separator()
+        layout.separator(factor=1.2)
 
-        layout.operator("lounge.build_set", text="Build Lounge Set", icon='MESH_PLANE')
+        # ── Build ─────────────────────────────────────────────
+        row = layout.row()
+        row.scale_y = 1.6
+        row.operator("lounge.build_set", text="Build Lounge Set", icon='MESH_PLANE')
 
 
 classes = [LoungeSettings, LOUNGE_PT_Main]
