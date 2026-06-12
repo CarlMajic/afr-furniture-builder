@@ -120,18 +120,16 @@ class LOUNGE_PT_Main(bpy.types.Panel):
     bl_space_type  = "VIEW_3D"
     bl_region_type = "UI"
     bl_category    = "AFR Furniture"
+    bl_order       = 3
 
     def draw_header(self, context):
-        logo = branding.icon()
-        if logo:
-            self.layout.label(text="", icon_value=logo)
+        ic = branding.icon("icon_lounge")
+        if ic:
+            self.layout.label(text="", icon_value=ic)
 
     def draw(self, context):
         layout = self.layout
         s = context.scene.lounge_settings
-
-        branding.draw_logo(layout)
-        layout.separator(factor=0.5)
 
         # ── Library ───────────────────────────────────────────
         lib_box = layout.box()

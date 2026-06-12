@@ -72,18 +72,16 @@ class CAFE_PT_Main(bpy.types.Panel):
     bl_space_type  = "VIEW_3D"
     bl_region_type = "UI"
     bl_category    = "AFR Furniture"
+    bl_order       = 1
 
     def draw_header(self, context):
-        logo = branding.icon()
-        if logo:
-            self.layout.label(text="", icon_value=logo)
+        ic = branding.icon("icon_cafe")
+        if ic:
+            self.layout.label(text="", icon_value=ic)
 
     def draw(self, context):
         layout = self.layout
         s = context.scene.cafe_settings
-
-        branding.draw_logo(layout)
-        layout.separator(factor=0.5)
 
         # ── Library ───────────────────────────────────────────
         lib_box = layout.box()

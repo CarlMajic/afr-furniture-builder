@@ -1,10 +1,4 @@
-"""
-AFR Furniture Builder — branding utilities.
-
-Loads the AFR logo PNG (cached alongside the addon) and registers it as a
-Blender preview icon.  Falls back to a programmatic blue/gold badge if the
-file is missing.  Attempts a CDN download on first run if neither exists.
-"""
+"""AFR Furniture Builder — branding utilities."""
 
 import bpy
 import math
@@ -12,19 +6,17 @@ import os
 import re
 import urllib.request
 
-# ── Brand colours (sRGB floats) ────────────────────────────────────────────
+# ── Brand colours ──────────────────────────────────────────────────────────
 BLUE  = (0.271, 0.455, 0.729, 1.0)   # #4574BA
 GOLD  = (0.784, 0.659, 0.251, 1.0)   # #C8A840
-WHITE = (1.0,   1.0,   1.0,   1.0)
 
-# ── Logo candidate URLs (tried in order if no cached file exists) ──────────
+# ── CDN fallback URLs ──────────────────────────────────────────────────────
 _LOGO_CANDIDATES = [
     "https://www.afrevents.com/wp-content/themes/afrevents/images/afr-events-logo.png",
     "https://www.afrevents.com/wp-content/themes/afr/images/afr-events-logo.png",
     "https://www.afrevents.com/images/afr-logo.png",
     "https://www.rentfurniture.com/wp-content/themes/afr/images/logo.png",
 ]
-
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -37,24 +29,18 @@ _HEADERS = {
 def _addon_dir():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
 def _cache_path():
     return os.path.join(_addon_dir(), "_afr_logo_cache.png")
 
-
 def _valid_image(data):
-    return (
-        len(data) > 2000
-        and (data[:8] == b"\x89PNG\r\n\x1a\n" or data[:3] == b"\xff\xd8\xff")
+    return len(data) > 2000 and (
+        data[:8] == b"\x89PNG\r\n\x1a\n" or data[:3] == b"\xff\xd8\xff"
     )
 
-
 def _fetch_logo():
-    """Return path to a cached logo file, downloading it if necessary."""
     path = _cache_path()
     if os.path.exists(path) and os.path.getsize(path) > 2000:
         return path
-
     candidates = list(_LOGO_CANDIDATES)
     try:
         req = urllib.request.Request("https://www.afrevents.com/", headers=_HEADERS)
@@ -73,7 +59,6 @@ def _fetch_logo():
                 break
     except Exception:
         pass
-
     for url in candidates:
         try:
             req = urllib.request.Request(url, headers=_HEADERS)
@@ -85,46 +70,86 @@ def _fetch_logo():
                 return path
         except Exception:
             continue
-
     return None
 
-
-# ── Icon pixel helpers ─────────────────────────────────────────────────────
-
 def _remove_white_bg(thumb, threshold=0.90):
-    """Set near-white pixels to transparent in a loaded preview thumbnail."""
     try:
         w, h = thumb.image_size
         if w == 0 or h == 0:
             return
         pixels = list(thumb.image_pixels_float)
         for i in range(0, len(pixels), 4):
-            r, g, b = pixels[i], pixels[i + 1], pixels[i + 2]
-            if r > threshold and g > threshold and b > threshold:
-                pixels[i + 3] = 0.0
+            if pixels[i] > threshold and pixels[i+1] > threshold and pixels[i+2] > threshold:
+                pixels[i+3] = 0.0
         thumb.image_pixels_float = pixels
     except Exception as e:
         print(f"[AFR Branding] bg-removal error: {e}")
 
 
-def _badge(size=32):
-    """Blue circle with a gold border — fallback when no logo file exists."""
-    pixels = []
-    cx = cy = size / 2.0
-    r_outer = size / 2.0 - 0.5
-    r_gold  = r_outer - max(2, size // 10)
-    for row in range(size):
-        for col in range(size):
-            dx = col - cx + 0.5
-            dy = row - cy + 0.5
-            d  = math.sqrt(dx * dx + dy * dy)
-            if d > r_outer:
-                pixels += [0.0, 0.0, 0.0, 0.0]
-            elif d > r_gold:
-                pixels += list(GOLD)
-            else:
-                pixels += list(BLUE)
-    return pixels
+# ── Pixel-art icon helpers ─────────────────────────────────────────────────
+
+def _px(buf, w, col, row, color):
+    if 0 <= col < w and 0 <= row < w:
+        i = (row * w + col) * 4
+        buf[i:i+4] = list(color)
+
+def _rect(buf, w, x1, y1, x2, y2, color):
+    for r in range(max(0,y1), min(w,y2)):
+        for c in range(max(0,x1), min(w,x2)):
+            _px(buf, w, c, r, color)
+
+def _circle(buf, w, cx, cy, radius, color):
+    r2 = radius * radius
+    for r in range(max(0, cy-radius-1), min(w, cy+radius+2)):
+        for c in range(max(0, cx-radius-1), min(w, cx+radius+2)):
+            if (c-cx+0.5)**2 + (r-cy+0.5)**2 <= r2:
+                _px(buf, w, c, r, color)
+
+def _empty(size):
+    return [0.0] * (size * size * 4)
+
+
+def _icon_cafe(size=32):
+    """Top-down view: round table with four chairs."""
+    buf = _empty(size)
+    c = size // 2
+    _circle(buf, size, c, c,  5, BLUE)           # table
+    _circle(buf, size, c,    c-10, 3, BLUE)       # chair N
+    _circle(buf, size, c,    c+10, 3, BLUE)       # chair S
+    _circle(buf, size, c-10, c,    3, BLUE)       # chair W
+    _circle(buf, size, c+10, c,    3, BLUE)       # chair E
+    return buf
+
+
+def _icon_lounge(size=32):
+    """Side profile: sofa with coffee table."""
+    buf = _empty(size)
+    # sofa seat
+    _rect(buf, size,  3, 18, 25, 26, BLUE)
+    # sofa back (tall, left)
+    _rect(buf, size,  3,  9,  9, 26, BLUE)
+    # right arm
+    _rect(buf, size, 21, 14, 26, 26, BLUE)
+    # coffee table (gold, in front)
+    _rect(buf, size, 26, 19, 31, 23, GOLD)
+    _rect(buf, size, 27, 23, 30, 26, GOLD)       # table leg
+    return buf
+
+
+def _icon_bar(size=32):
+    """Front view: tall bar table with two stools."""
+    buf = _empty(size)
+    # table top
+    _rect(buf, size,  4,  7, 28, 11, BLUE)
+    # table leg
+    _rect(buf, size, 13, 11, 19, 27, BLUE)
+    # left stool seat + leg
+    _circle(buf, size, 5, 19, 4, GOLD)
+    _rect(buf, size,  4, 23,  7, 28, GOLD)
+    # right stool seat + leg
+    _circle(buf, size, 27, 19, 4, GOLD)
+    _rect(buf, size, 26, 23, 29, 28, GOLD)
+    return buf
 
 
 # ── Preview collection ─────────────────────────────────────────────────────
@@ -136,24 +161,29 @@ def load_icons():
     global _pcoll
     if _pcoll is not None:
         return
-
     _pcoll = bpy.utils.previews.new()
 
+    # Main AFR logo
     logo_path = _fetch_logo()
-    loaded_real = False
-
     if logo_path:
         try:
             thumb = _pcoll.load("afr_logo", logo_path, "IMAGE")
             _remove_white_bg(thumb)
-            loaded_real = True
         except Exception as e:
-            print(f"[AFR Branding] logo load error: {e}")
-
-    if not loaded_real:
+            print(f"[AFR Branding] logo error: {e}")
+            logo_path = None
+    if not logo_path:
+        # fallback: blue/gold badge
         t = _pcoll.new("afr_logo")
         t.image_size = (32, 32)
-        t.image_pixels_float = _badge(32)
+        import math as _m
+        t.image_pixels_float = _icon_lounge(32)   # use lounge as generic badge
+
+    # Category icons
+    for name, fn in [("icon_cafe", _icon_cafe), ("icon_lounge", _icon_lounge), ("icon_bar", _icon_bar)]:
+        t = _pcoll.new(name)
+        t.image_size = (32, 32)
+        t.image_pixels_float = fn(32)
 
 
 def unload_icons():
@@ -164,7 +194,6 @@ def unload_icons():
 
 
 def icon(name="afr_logo"):
-    """Return icon_value for a branding icon, 0 if unavailable."""
     if _pcoll is None:
         return 0
     thumb = _pcoll.get(name)
@@ -172,13 +201,10 @@ def icon(name="afr_logo"):
 
 
 def draw_logo(layout, scale=5.0):
-    """
-    Draw the AFR logo prominently at the top of a panel.
-    Falls back to a text label if the icon isn't loaded.
-    """
-    logo = icon()
+    """Draw the AFR logo centred in a panel row."""
     row = layout.row()
     row.alignment = 'CENTER'
+    logo = icon("afr_logo")
     if logo:
         row.template_icon(icon_value=logo, scale=scale)
     else:
