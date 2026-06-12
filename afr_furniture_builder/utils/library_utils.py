@@ -527,6 +527,67 @@ LAMP_ITEMS = [
 ]
 
 
+def find_dining_set_root(obj):
+    """Traverse parent chain to find the AFR dining set root empty."""
+    current = obj
+    while current is not None:
+        if current.get("afr_is_dining_set"):
+            return current
+        current = current.parent
+    return None
+
+
+def _rect_x_positions(per_side, table_half_w):
+    """Evenly spaced X positions for per_side chairs across the table width."""
+    if per_side == 1:
+        return [0.0]
+    outer = table_half_w * 0.75
+    return [-outer + outer * 2.0 * i / (per_side - 1) for i in range(per_side)]
+
+
+def compute_dining_chair_placements(table_half_w, table_half_d, chair_inward, gap_m, count, arrangement):
+    """Like compute_chair_placements but supports 2/4/6/8 chairs for dining."""
+    placements = []
+
+    if arrangement == 'RADIAL':
+        table_radius = max(table_half_w, table_half_d)
+        r = table_radius + gap_m - chair_inward
+        start = -math.pi / 2
+        angles = [start + i * 2 * math.pi / count for i in range(count)]
+        for angle in angles:
+            placements.append({
+                'x':        r * math.cos(angle),
+                'y':        r * math.sin(angle),
+                'rot_z':    angle - math.pi / 2,
+                'type':     'radial',
+                'angle':    angle,
+                'dir_x':    math.cos(angle),
+                'dir_y':    math.sin(angle),
+                'x_offset': 0.0,
+            })
+    else:  # RECT
+        front_y     = table_half_d + gap_m - chair_inward
+        per_side    = count // 2
+        x_positions = _rect_x_positions(per_side, table_half_w)
+
+        for x in x_positions:
+            placements.append({
+                'x': x, 'y': -front_y, 'rot_z': math.pi,
+                'type': 'rect', 'angle': 0.0,
+                'dir_x': 0.0, 'dir_y': -1.0,
+                'x_offset': x,
+            })
+        for x in x_positions:
+            placements.append({
+                'x': x, 'y': +front_y, 'rot_z': 0.0,
+                'type': 'rect', 'angle': 0.0,
+                'dir_x': 0.0, 'dir_y': +1.0,
+                'x_offset': x,
+            })
+
+    return placements
+
+
 def find_lounge_set_root(obj):
     """Traverse parent chain to find the AFR lounge set root empty."""
     current = obj
@@ -582,3 +643,48 @@ def reposition_chairs(set_root, gap_m):
             r = half_d + gap_m - chair_inward
             child.location.x = x_offset   # fixed; only Y changes with gap
             child.location.y = dir_y * r
+
+
+# ---------------------------------------------------------------------------
+# Dining library constants
+# ---------------------------------------------------------------------------
+
+DINING_LIBRARY_PATH      = r"D:\Blender\Decore\AFR Furniture\AFR Dining Furniture.blend"
+DINING_COLLECTION_TABLES = "Tables"
+DINING_COLLECTION_CHAIRS = "Chairs Stools"
+
+DINING_TABLE_ITEMS = [
+    ("Aspen Dining Table_low poly",              "Aspen",               ""),
+    ("Brio Dining Table",                        "Brio",                ""),
+    ("Brooklyn_rectangle_dining_table_uv_nov17", "Brooklyn Rectangle",  ""),
+    ("brooklyn_round_dining_table_uv_nov17",     "Brooklyn Round",      ""),
+    ("cora_dining_table",                        "Cora",                ""),
+    ("Cylinder Dining Table",                    "Cylinder",            ""),
+    ("Elements table",                           "Elements",            ""),
+    ("encore_dining_table",                      "Encore",              ""),
+    ("Java Dining Table",                        "Java",                ""),
+    ("kool GLO café table - 60in",          "Kool GLO 60\"",       ""),
+    ("madera_dining_table",                      "Madera",              ""),
+    ("Tahoe_dining_table_uv_nov18",              "Tahoe",               ""),
+    ("Vivid_Rectangle_Table_Glass",              "Vivid Rectangle Glass",""),
+    ("Vivid_Square_Table_Glass",                 "Vivid Square Glass",  ""),
+]
+
+DINING_CHAIR_ITEMS = [
+    ("arlo_chair_black",                "Arlo Black",              ""),
+    ("Bianca_Chair",                    "Bianca",                  ""),
+    ("Caprice Chair",                   "Caprice",                 ""),
+    ("ClaraChair",                      "Clara",                   ""),
+    ("colin_chair",                     "Colin",                   ""),
+    ("Criss Cros",                      "Criss Cross",             ""),
+    ("Elio Chair",                      "Elio",                    ""),
+    ("Escape Chair",                    "Escape",                  ""),
+    ("ghost_chai",                      "Ghost",                   ""),
+    ("leslie chair",                    "Leslie",                  ""),
+    ("milo_chair_black",                "Milo Black",              ""),
+    ("Nexus Chair",                     "Nexus",                   ""),
+    ("Regale Chair",                    "Regale",                  ""),
+    ("Silk Back Armless Chair - Black", "Silk Back Armless Black", ""),
+    ("Sonic Chair",                     "Sonic",                   ""),
+    ("zazu_cafe_chair",                 "Zazu",                    ""),
+]

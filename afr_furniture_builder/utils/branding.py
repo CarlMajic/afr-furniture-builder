@@ -152,6 +152,20 @@ def _icon_bar(size=32):
     return buf
 
 
+def _icon_dining(size=32):
+    """Top-down view: rectangular dining table with chairs on long sides."""
+    buf = _empty(size)
+    # table top (rectangular, landscape)
+    _rect(buf, size, 4, 11, 28, 21, BLUE)
+    # front chairs (gold)
+    _circle(buf, size,  9, 25, 3, GOLD)
+    _circle(buf, size, 23, 25, 3, GOLD)
+    # back chairs (gold)
+    _circle(buf, size,  9,  7, 3, GOLD)
+    _circle(buf, size, 23,  7, 3, GOLD)
+    return buf
+
+
 # ── Preview collection ─────────────────────────────────────────────────────
 
 _pcoll = None
@@ -180,7 +194,7 @@ def load_icons():
         t.image_pixels_float = _icon_lounge(32)   # use lounge as generic badge
 
     # Category icons
-    for name, fn in [("icon_cafe", _icon_cafe), ("icon_lounge", _icon_lounge), ("icon_bar", _icon_bar)]:
+    for name, fn in [("icon_cafe", _icon_cafe), ("icon_lounge", _icon_lounge), ("icon_bar", _icon_bar), ("icon_dining", _icon_dining)]:
         t = _pcoll.new(name)
         t.image_size = (32, 32)
         t.image_pixels_float = fn(32)
