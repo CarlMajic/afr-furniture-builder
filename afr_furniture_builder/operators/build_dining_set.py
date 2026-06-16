@@ -95,6 +95,12 @@ def _add_tablecloth(context, set_root, table_root, cx, cy, half_w, half_d, setti
     col.use_collision  = True
     col.distance_min   = 0.005
 
+    # Subdivision surface after cloth — smooths the draped fabric
+    subsurf = cloth_obj.modifiers.new("Subdivision", 'SUBSURF')
+    subsurf.subdivision_type = 'CATMULL_CLARK'
+    subsurf.levels           = 2
+    subsurf.render_levels    = 2
+
     # Collision modifier on every table mesh so the cloth lands on it
     for obj in [table_root] + list(table_root.children_recursive):
         if obj.type == 'MESH':
